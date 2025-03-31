@@ -1,0 +1,70 @@
+Implementation Instructions
+Here's how to set up the MikroTik traceroute monitoring in Zabbix:
+1. Script Setup
+
+Save the Python script to your Zabbix server or proxy:
+bashCopysudo mkdir -p /usr/lib/zabbix/externalscripts/
+sudo nano /usr/lib/zabbix/externalscripts/mikrotik_traceroute.py
+
+Copy the content from the first artifact into this file
+Make the script executable:
+bashCopysudo chmod +x /usr/lib/zabbix/externalscripts/mikrotik_traceroute.py
+
+Install required Python libraries:
+bashCopysudo pip3 install paramiko
+
+
+2. Configure External Check in Zabbix
+
+Create a script item in Zabbix:
+
+Type: External check
+Key: mikrotik.traceroute[{$TARGET_IP}]
+This key should match the one in the template
+
+
+
+3. Import the Template
+
+In Zabbix web interface, go to Configuration → Templates
+Click Import
+Upload the template XML from the second artifact
+Select appropriate import options and click Import
+
+4. Assign the Template to a Host
+
+Create a host for your MikroTik device if you don't already have one
+Go to the host's template tab and link the "MikroTik Traceroute" template
+Configure the host macros:
+
+{$MIKROTIK_IP}: Your MikroTik router's IP address
+{$MIKROTIK_USER}: Username for SSH access
+{$MIKROTIK_PASS}: Password for SSH access
+{$TARGET_IP}: The destination IP to trace (e.g., 8.8.8.8)
+{$PROBE_COUNT}: Number of probes per hop (default: 5)
+
+
+
+5. Test the Script
+Before fully deploying, test the script manually:
+bashCopycd /usr/lib/zabbix/externalscripts/
+./mikrotik_traceroute.py 8.8.8.8
+This should output JSON data with the traceroute results.
+What This Solution Provides
+
+Complete Traceroute Data: Captures all hop information including latency metrics, loss rates, and jitter.
+Discovery: Automatically discovers all hops in the traceroute path and creates items for each.
+Key Metrics:
+
+Total hop count to destination
+Average latency for each hop
+Packet loss at each hop
+Jitter (latency variation) at each hop
+End-to-end latency
+
+
+Customization via Macros: All parameters can be customized using macros:
+
+Router credentials
+Target IP address
+Number of probes
