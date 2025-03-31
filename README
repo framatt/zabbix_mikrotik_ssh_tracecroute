@@ -3,15 +3,15 @@ Here's how to set up the MikroTik traceroute monitoring in Zabbix:
 1. Script Setup
 
 Save the Python script to your Zabbix server or proxy:
-bashCopysudo mkdir -p /usr/lib/zabbix/externalscripts/
+sudo mkdir -p /usr/lib/zabbix/externalscripts/
 sudo nano /usr/lib/zabbix/externalscripts/mikrotik_traceroute.py
 
 Copy the content from the first artifact into this file
 Make the script executable:
-bashCopysudo chmod +x /usr/lib/zabbix/externalscripts/mikrotik_traceroute.py
+sudo chmod +x /usr/lib/zabbix/externalscripts/mikrotik_traceroute.py
 
 Install required Python libraries:
-bashCopysudo pip3 install paramiko
+sudo pip3 install paramiko
 
 
 2. Configure External Check in Zabbix
@@ -47,7 +47,7 @@ Configure the host macros:
 
 5. Test the Script
 Before fully deploying, test the script manually:
-bashCopycd /usr/lib/zabbix/externalscripts/
+cd /usr/lib/zabbix/externalscripts/
 ./mikrotik_traceroute.py 8.8.8.8
 This should output JSON data with the traceroute results.
 What This Solution Provides
