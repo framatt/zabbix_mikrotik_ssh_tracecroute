@@ -1,0 +1,515 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+    <version>5.0</version>
+    <date>2025-03-31T00:00:00Z</date>
+    <groups>
+        <group>
+            <name>Templates/Network</name>
+        </group>
+    </groups>
+    <templates>
+        <template>
+            <template>MikroTik Traceroute</template>
+            <name>MikroTik Traceroute</name>
+            <description>Template for monitoring traceroute metrics from MikroTik devices</description>
+            <groups>
+                <group>
+                    <name>Templates/Network</name>
+                </group>
+            </groups>
+            <applications>
+                <application>
+                    <name>Traceroute</name>
+                </application>
+            </applications>
+            <items>
+                <item>
+                    <name>Traceroute to {$TARGET_IP}</name>
+                    <type>10</type>
+                    <key>mikrotik.traceroute[{$TARGET_IP}]</key>
+                    <delay>5m</delay>
+                    <history>7d</history>
+                    <trends>0</trends>
+                    <value_type>4</value_type>
+                    <description>MikroTik traceroute data to {$TARGET_IP}</description>
+                    <applications>
+                        <application>
+                            <name>Traceroute</name>
+                        </application>
+                    </applications>
+                    <preprocessing>
+                        <step>
+                            <type>12</type>
+                            <params>$.hops</params>
+                            <error_handler>1</error_handler>
+                            <error_handler_params></error_handler_params>
+                        </step>
+                    </preprocessing>
+                </item>
+                <item>
+                    <name>Traceroute Hop Count to {$TARGET_IP}</name>
+                    <type>15</type>
+                    <key>traceroute.hop_count[{$TARGET_IP}]</key>
+                    <delay>0</delay>
+                    <history>7d</history>
+                    <value_type>3</value_type>
+                    <description>Number of hops to reach {$TARGET_IP}</description>
+                    <applications>
+                        <application>
+                            <name>Traceroute</name>
+                        </application>
+                    </applications>
+                    <preprocessing>
+                        <step>
+                            <type>12</type>
+                            <params>$.length()</params>
+                            <error_handler>1</error_handler>
+                            <error_handler_params></error_handler_params>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>mikrotik.traceroute[{$TARGET_IP}]</key>
+                    </master_item>
+                    <triggers>
+                        <trigger>
+                            <expression>{change()}&gt;{$HOP_COUNT_CHANGE_THRESHOLD}</expression>
+                            <name>Route to {$TARGET_IP} changed: hop count increased by {ITEM.LASTVALUE}</name>
+                            <priority>warning</priority>
+                            <description>The number of hops to the destination has changed significantly, indicating a possible routing change</description>
+                        </trigger>
+                    </triggers>
+                </item>
+                <item>
+                    <name>Traceroute Total Latency to {$TARGET_IP}</name>
+                    <type>15</type>
+                    <key>traceroute.total_latency[{$TARGET_IP}]</key>
+                    <delay>0</delay>
+                    <history>7d</history>
+                    <value_type>0</value_type>
+                    <units>ms</units>
+                    <description>Sum of average latency across all hops to {$TARGET_IP}</description>
+                    <applications>
+                        <application>
+                            <name>Traceroute</name>
+                        </application>
+                    </applications>
+                    <preprocessing>
+                        <step>
+                            <type>12</type>
+                            <params>$.[*].avg.sum()</params>
+                            <error_handler>1</error_handler>
+                            <error_handler_params></error_handler_params>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>mikrotik.traceroute[{$TARGET_IP}]</key>
+                    </master_item>
+                    <triggers>
+                        <trigger>
+                            <expression>{avg(5m)}&gt;{$TOTAL_LATENCY_THRESHOLD}</expression>
+                            <name>High total latency to {$TARGET_IP}: {ITEM.LASTVALUE}</name>
+                            <priority>average</priority>
+                            <description>Total latency to the destination exceeds the threshold</description>
+                        </trigger>
+                    </triggers>
+                </item>
+                <item>
+                    <name>Traceroute Last Hop Latency to {$TARGET_IP}</name>
+                    <type>15</type>
+                    <key>traceroute.last_hop_latency[{$TARGET_IP}]</key>
+                    <delay>0</delay>
+                    <history>7d</history>
+                    <value_type>0</value_type>
+                    <units>ms</units>
+                    <description>Latency of the final hop to {$TARGET_IP}</description>
+                    <applications>
+                        <application>
+                            <name>Traceroute</name>
+                        </application>
+                    </applications>
+                    <preprocessing>
+                        <step>
+                            <type>12</type>
+                            <params>$.[last()].avg</params>
+                            <error_handler>1</error_handler>
+                            <error_handler_params></error_handler_params>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>mikrotik.traceroute[{$TARGET_IP}]</key>
+                    </master_item>
+                    <triggers>
+                        <trigger>
+                            <expression>{avg(5m)}&gt;{$LAST_HOP_LATENCY_THRESHOLD}</expression>
+                            <name>High latency to {$TARGET_IP}: {ITEM.LASTVALUE}</name>
+                            <priority>average</priority>
+                            <description>Latency to the destination exceeds the threshold</description>
+                        </trigger>
+                    </triggers>
+                </item>
+            </items>
+            <discovery_rules>
+                <discovery_rule>
+                    <name>Traceroute Hops Discovery</name>
+                    <key>traceroute.hops.discovery[{$TARGET_IP}]</key>
+                    <delay>10m</delay>
+                    <item_prototypes>
+                        <item_prototype>
+                            <name>Hop {#HOP_NUM}: {#HOP_IP} Average Latency</name>
+                            <type>15</type>
+                            <key>traceroute.hop[{#HOP_NUM},avg]</key>
+                            <delay>0</delay>
+                            <history>7d</history>
+                            <value_type>0</value_type>
+                            <units>ms</units>
+                            <description>Average latency for hop {#HOP_NUM} ({#HOP_IP})</description>
+                            <applications>
+                                <application>
+                                    <name>Traceroute</name>
+                                </application>
+                            </applications>
+                            <preprocessing>
+                                <step>
+                                    <type>12</type>
+                                    <params>$.[?(@.hop == {#HOP_NUM})].avg.first()</params>
+                                    <error_handler>1</error_handler>
+                                    <error_handler_params></error_handler_params>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>mikrotik.traceroute[{$TARGET_IP}]</key>
+                            </master_item>
+                            <trigger_prototypes>
+                                <trigger_prototype>
+                                    <expression>{avg(5m)}&gt;{$HOP_LATENCY_THRESHOLD}</expression>
+                                    <name>High latency on hop {#HOP_NUM} ({#HOP_IP}): {ITEM.LASTVALUE}</name>
+                                    <priority>warning</priority>
+                                    <description>Average latency for this hop exceeds the threshold</description>
+                                </trigger_prototype>
+                            </trigger_prototypes>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Hop {#HOP_NUM}: {#HOP_IP} Loss</name>
+                            <type>15</type>
+                            <key>traceroute.hop[{#HOP_NUM},loss]</key>
+                            <delay>0</delay>
+                            <history>7d</history>
+                            <value_type>0</value_type>
+                            <units>%</units>
+                            <description>Packet loss percentage for hop {#HOP_NUM} ({#HOP_IP})</description>
+                            <applications>
+                                <application>
+                                    <name>Traceroute</name>
+                                </application>
+                            </applications>
+                            <preprocessing>
+                                <step>
+                                    <type>12</type>
+                                    <params>$.[?(@.hop == {#HOP_NUM})].loss.first()</params>
+                                    <error_handler>1</error_handler>
+                                    <error_handler_params></error_handler_params>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>mikrotik.traceroute[{$TARGET_IP}]</key>
+                            </master_item>
+                            <trigger_prototypes>
+                                <trigger_prototype>
+                                    <expression>{last()}&gt;{$HOP_LOSS_THRESHOLD}</expression>
+                                    <name>Packet loss on hop {#HOP_NUM} ({#HOP_IP}): {ITEM.LASTVALUE}%</name>
+                                    <priority>high</priority>
+                                    <description>Packet loss percentage for this hop exceeds the threshold</description>
+                                </trigger_prototype>
+                            </trigger_prototypes>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Hop {#HOP_NUM}: {#HOP_IP} Jitter</name>
+                            <type>15</type>
+                            <key>traceroute.hop[{#HOP_NUM},jitter]</key>
+                            <delay>0</delay>
+                            <history>7d</history>
+                            <value_type>0</value_type>
+                            <units>ms</units>
+                            <description>Jitter (standard deviation) for hop {#HOP_NUM} ({#HOP_IP})</description>
+                            <applications>
+                                <application>
+                                    <name>Traceroute</name>
+                                </application>
+                            </applications>
+                            <preprocessing>
+                                <step>
+                                    <type>12</type>
+                                    <params>$.[?(@.hop == {#HOP_NUM})].stddev.first()</params>
+                                    <error_handler>1</error_handler>
+                                    <error_handler_params></error_handler_params>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>mikrotik.traceroute[{$TARGET_IP}]</key>
+                            </master_item>
+                            <trigger_prototypes>
+                                <trigger_prototype>
+                                    <expression>{avg(5m)}&gt;{$HOP_JITTER_THRESHOLD}</expression>
+                                    <name>High jitter on hop {#HOP_NUM} ({#HOP_IP}): {ITEM.LASTVALUE}ms</name>
+                                    <priority>warning</priority>
+                                    <description>Jitter (standard deviation) for this hop exceeds the threshold</description>
+                                </trigger_prototype>
+                            </trigger_prototypes>
+                        </item_prototype>
+                    </item_prototypes>
+                    <master_item>
+                        <key>mikrotik.traceroute[{$TARGET_IP}]</key>
+                    </master_item>
+                    <lld_macro_paths>
+                        <lld_macro_path>
+                            <lld_macro>{#HOP_NUM}</lld_macro>
+                            <path>$.hop</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#HOP_IP}</lld_macro>
+                            <path>$.address</path>
+                        </lld_macro_path>
+                    </lld_macro_paths>
+                </discovery_rule>
+            </discovery_rules>
+            <macros>
+                <macro>
+                    <macro>{$MIKROTIK_IP}</macro>
+                    <value>192.168.1.1</value>
+                    <description>IP address of MikroTik router</description>
+                </macro>
+                <macro>
+                    <macro>{$MIKROTIK_USER}</macro>
+                    <value>admin</value>
+                    <description>Username for MikroTik router</description>
+                </macro>
+                <macro>
+                    <macro>{$MIKROTIK_PASS}</macro>
+                    <value>password</value>
+                    <type>secret</type>
+                    <description>Password for MikroTik router</description>
+                </macro>
+                <macro>
+                    <macro>{$TARGET_IP}</macro>
+                    <value>8.8.8.8</value>
+                    <description>Target IP to trace route to</description>
+                </macro>
+                <macro>
+                    <macro>{$PROBE_COUNT}</macro>
+                    <value>5</value>
+                    <description>Number of probes per hop</description>
+                </macro>
+                <macro>
+                    <macro>{$HOP_LATENCY_THRESHOLD}</macro>
+                    <value>100</value>
+                    <description>Threshold for average hop latency (ms)</description>
+                </macro>
+                <macro>
+                    <macro>{$HOP_JITTER_THRESHOLD}</macro>
+                    <value>20</value>
+                    <description>Threshold for hop jitter/stddev (ms)</description>
+                </macro>
+                <macro>
+                    <macro>{$HOP_LOSS_THRESHOLD}</macro>
+                    <value>10</value>
+                    <description>Threshold for hop packet loss (%)</description>
+                </macro>
+                <macro>
+                    <macro>{$TOTAL_LATENCY_THRESHOLD}</macro>
+                    <value>200</value>
+                    <description>Threshold for total path latency (ms)</description>
+                </macro>
+                <macro>
+                    <macro>{$LAST_HOP_LATENCY_THRESHOLD}</macro>
+                    <value>50</value>
+                    <description>Threshold for last hop latency (ms)</description>
+                </macro>
+                <macro>
+                    <macro>{$HOP_COUNT_CHANGE_THRESHOLD}</macro>
+                    <value>2</value>
+                    <description>Threshold for hop count change to trigger an alert</description>
+                </macro>
+            </macros>
+            <screens>
+                <screen>
+                    <name>Traceroute Overview</name>
+                    <hsize>2</hsize>
+                    <vsize>2</vsize>
+                    <screen_items>
+                        <screen_item>
+                            <resourcetype>0</resourcetype>
+                            <width>500</width>
+                            <height>100</height>
+                            <x>0</x>
+                            <y>0</y>
+                            <colspan>1</colspan>
+                            <rowspan>1</rowspan>
+                            <elements>0</elements>
+                            <valign>0</valign>
+                            <halign>0</halign>
+                            <style>0</style>
+                            <url></url>
+                            <dynamic>0</dynamic>
+                            <sort_triggers>0</sort_triggers>
+                            <resource>
+                                <name>Hop Count to {$TARGET_IP}</name>
+                                <host>MikroTik Traceroute</host>
+                            </resource>
+                            <max_columns>3</max_columns>
+                            <application></application>
+                        </screen_item>
+                        <screen_item>
+                            <resourcetype>0</resourcetype>
+                            <width>500</width>
+                            <height>100</height>
+                            <x>1</x>
+                            <y>0</y>
+                            <colspan>1</colspan>
+                            <rowspan>1</rowspan>
+                            <elements>0</elements>
+                            <valign>0</valign>
+                            <halign>0</halign>
+                            <style>0</style>
+                            <url></url>
+                            <dynamic>0</dynamic>
+                            <sort_triggers>0</sort_triggers>
+                            <resource>
+                                <name>Total Latency to {$TARGET_IP}</name>
+                                <host>MikroTik Traceroute</host>
+                            </resource>
+                            <max_columns>3</max_columns>
+                            <application></application>
+                        </screen_item>
+                        <screen_item>
+                            <resourcetype>0</resourcetype>
+                            <width>500</width>
+                            <height>100</height>
+                            <x>0</x>
+                            <y>1</y>
+                            <colspan>2</colspan>
+                            <rowspan>1</rowspan>
+                            <elements>0</elements>
+                            <valign>0</valign>
+                            <halign>0</halign>
+                            <style>0</style>
+                            <url></url>
+                            <dynamic>0</dynamic>
+                            <sort_triggers>0</sort_triggers>
+                            <resource>
+                                <name>Hop Performance</name>
+                                <host>MikroTik Traceroute</host>
+                            </resource>
+                            <max_columns>3</max_columns>
+                            <application></application>
+                        </screen_item>
+                    </screen_items>
+                </screen>
+            </screens>
+            <graphs>
+                <graph>
+                    <name>Hop Count to {$TARGET_IP}</name>
+                    <width>900</width>
+                    <height>200</height>
+                    <yaxismin>0.0000</yaxismin>
+                    <yaxismax>100.0000</yaxismax>
+                    <show_work_period>1</show_work_period>
+                    <show_triggers>1</show_triggers>
+                    <type>0</type>
+                    <show_legend>1</show_legend>
+                    <show_3d>0</show_3d>
+                    <percent_left>0.0000</percent_left>
+                    <percent_right>0.0000</percent_right>
+                    <ymin_type_1>0</ymin_type_1>
+                    <ymax_type_1>0</ymax_type_1>
+                    <ymin_item_1>0</ymin_item_1>
+                    <ymax_item_1>0</ymax_item_1>
+                    <graph_items>
+                        <graph_item>
+                            <sortorder>0</sortorder>
+                            <drawtype>0</drawtype>
+                            <color>1A7C11</color>
+                            <yaxisside>0</yaxisside>
+                            <calc_fnc>2</calc_fnc>
+                            <type>0</type>
+                            <item>
+                                <host>MikroTik Traceroute</host>
+                                <key>traceroute.hop_count[{$TARGET_IP}]</key>
+                            </item>
+                        </graph_item>
+                    </graph_items>
+                </graph>
+                <graph>
+                    <name>Total Latency to {$TARGET_IP}</name>
+                    <width>900</width>
+                    <height>200</height>
+                    <yaxismin>0.0000</yaxismin>
+                    <yaxismax>100.0000</yaxismax>
+                    <show_work_period>1</show_work_period>
+                    <show_triggers>1</show_triggers>
+                    <type>0</type>
+                    <show_legend>1</show_legend>
+                    <show_3d>0</show_3d>
+                    <percent_left>0.0000</percent_left>
+                    <percent_right>0.0000</percent_right>
+                    <ymin_type_1>0</ymin_type_1>
+                    <ymax_type_1>0</ymax_type_1>
+                    <ymin_item_1>0</ymin_item_1>
+                    <ymax_item_1>0</ymax_item_1>
+                    <graph_items>
+                        <graph_item>
+                            <sortorder>0</sortorder>
+                            <drawtype>0</drawtype>
+                            <color>1A7C11</color>
+                            <yaxisside>0</yaxisside>
+                            <calc_fnc>2</calc_fnc>
+                            <type>0</type>
+                            <item>
+                                <host>MikroTik Traceroute</host>
+                                <key>traceroute.total_latency[{$TARGET_IP}]</key>
+                            </item>
+                        </graph_item>
+                        <graph_item>
+                            <sortorder>1</sortorder>
+                            <drawtype>0</drawtype>
+                            <color>F63100</color>
+                            <yaxisside>0</yaxisside>
+                            <calc_fnc>2</calc_fnc>
+                            <type>0</type>
+                            <item>
+                                <host>MikroTik Traceroute</host>
+                                <key>traceroute.last_hop_latency[{$TARGET_IP}]</key>
+                            </item>
+                        </graph_item>
+                    </graph_items>
+                </graph>
+                <graph>
+                    <name>Hop Performance</name>
+                    <width>900</width>
+                    <height>300</height>
+                    <yaxismin>0.0000</yaxismin>
+                    <yaxismax>100.0000</yaxismax>
+                    <show_work_period>1</show_work_period>
+                    <show_triggers>1</show_triggers>
+                    <type>1</type>
+                    <show_legend>1</show_legend>
+                    <show_3d>0</show_3d>
+                    <percent_left>0.0000</percent_left>
+                    <percent_right>0.0000</percent_right>
+                    <ymin_type_1>0</ymin_type_1>
+                    <ymax_type_1>0</ymax_type_1>
+                    <ymin_item_1>0</ymin_item_1>
+                    <ymax_item_1>0</ymax_item_1>
+                    <graph_items/>
+                </graph>
+            </graphs>
+        </template>
+    </templates>
+    <triggers>
+        <trigger>
+            <expression>{MikroTik Traceroute:traceroute.total_latency[{$TARGET_IP}].avg(15m)}&gt;{$TOTAL_LATENCY_THRESHOLD}*1.5</expression>
+            <name>Very high total latency to {$TARGET_IP}: {ITEM.LASTVALUE}</name>
+            <priority>high</priority>
+            <description>Total latency to the destination is significantly higher than the threshold for a sustained period</description>
+        </trigger>
+    </triggers>
+</zabbix_export>
