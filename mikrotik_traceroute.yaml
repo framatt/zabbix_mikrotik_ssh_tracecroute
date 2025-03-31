@@ -1,0 +1,388 @@
+zabbix_export:
+  version: '7.0'
+  date: '2025-03-31T00:00:00Z'
+  groups:
+    -
+      uuid: 7df96b18c230490a9a0a9e2307226338
+      name: Templates/Network
+  templates:
+    -
+      uuid: 9daa55f388e94272af1cacad9807e847
+      template: MikroTik Traceroute
+      name: MikroTik Traceroute
+      description: |
+        Template for monitoring traceroute metrics from MikroTik devices.
+      groups:
+        -
+          name: Templates/Network
+      items:
+        -
+          uuid: 5b0e301ec100482ba6185e88bea05b23
+          name: 'Traceroute to {$TARGET_IP}'
+          type: EXTERNAL_SCRIPT # Type 100 in XML
+          key: 'mikrotik.traceroute[{$TARGET_IP}]'
+          delay: 5m
+          history: 7d
+          trends: 0
+          value_type: TEXT
+          description: 'MikroTik traceroute data to {$TARGET_IP}'
+          applications:
+            -
+              name: Traceroute
+          preprocessing:
+            -
+              type: JSONPATH
+              parameters:
+                - $.hops
+              error_handler: CUSTOM_VALUE
+              error_handler_params: ''
+        -
+          uuid: d9bbc7332f7d418c9f446d0112e0d9a8
+          name: 'Traceroute Hop Count to {$TARGET_IP}'
+          type: DEPENDENT
+          key: 'traceroute.hop_count[{$TARGET_IP}]'
+          delay: 0
+          history: 7d
+          value_type: INTEGER
+          description: 'Number of hops to reach {$TARGET_IP}'
+          applications:
+            -
+              name: Traceroute
+          preprocessing:
+            -
+              type: JSONPATH
+              parameters:
+                - $.length()
+              error_handler: CUSTOM_VALUE
+              error_handler_params: ''
+          master_item:
+            key: 'mikrotik.traceroute[{$TARGET_IP}]'
+          triggers:
+            -
+              uuid: da54732cbc06492da25873a4617e6916
+              expression: '{change()}>{${HOP_COUNT_CHANGE_THRESHOLD}}'
+              name: 'Route to {$TARGET_IP} changed: hop count increased by {ITEM.LASTVALUE}'
+              priority: WARNING
+              description: 'The number of hops to the destination has changed significantly, indicating a possible routing change'
+        -
+          uuid: 2c14c429e1c94f06826c6dff2a667b8e
+          name: 'Traceroute Total Latency to {$TARGET_IP}'
+          type: DEPENDENT
+          key: 'traceroute.total_latency[{$TARGET_IP}]'
+          delay: 0
+          history: 7d
+          value_type: FLOAT
+          units: ms
+          description: 'Sum of average latency across all hops to {$TARGET_IP}'
+          applications:
+            -
+              name: Traceroute
+          preprocessing:
+            -
+              type: JSONPATH
+              parameters:
+                - $.[*].avg.sum()
+              error_handler: CUSTOM_VALUE
+              error_handler_params: ''
+          master_item:
+            key: 'mikrotik.traceroute[{$TARGET_IP}]'
+          triggers:
+            -
+              uuid: cbd066fd1ebb4357878aa45397012853
+              expression: '{avg(5m)}>{${TOTAL_LATENCY_THRESHOLD}}'
+              name: 'High total latency to {$TARGET_IP}: {ITEM.LASTVALUE}'
+              priority: AVERAGE
+              description: 'Total latency to the destination exceeds the threshold'
+        -
+          uuid: 74e02f936ec54eac82e79be3f8e514aa
+          name: 'Traceroute Last Hop Latency to {$TARGET_IP}'
+          type: DEPENDENT
+          key: 'traceroute.last_hop_latency[{$TARGET_IP}]'
+          delay: 0
+          history: 7d
+          value_type: FLOAT
+          units: ms
+          description: 'Latency of the final hop to {$TARGET_IP}'
+          applications:
+            -
+              name: Traceroute
+          preprocessing:
+            -
+              type: JSONPATH
+              parameters:
+                - $.[last()].avg
+              error_handler: CUSTOM_VALUE
+              error_handler_params: ''
+          master_item:
+            key: 'mikrotik.traceroute[{$TARGET_IP}]'
+          triggers:
+            -
+              uuid: 85f135b542474f888566160101c51950
+              expression: '{avg(5m)}>{${LAST_HOP_LATENCY_THRESHOLD}}'
+              name: 'High latency to {$TARGET_IP}: {ITEM.LASTVALUE}'
+              priority: AVERAGE
+              description: 'Latency to the destination exceeds the threshold'
+      discovery_rules:
+        -
+          uuid: 13a77626998c4f94857502c2e0b118b1
+          name: 'Traceroute Hops Discovery'
+          key: 'traceroute.hops.discovery[{$TARGET_IP}]'
+          delay: 10m
+          item_prototypes:
+            -
+              uuid: 7d14217112444c80b9911e860155b931
+              name: 'Hop {#HOP_NUM}: {#HOP_IP} Average Latency'
+              type: DEPENDENT
+              key: 'traceroute.hop[{#HOP_NUM},avg]'
+              delay: 0
+              history: 7d
+              value_type: FLOAT
+              units: ms
+              description: 'Average latency for hop {#HOP_NUM} ({#HOP_IP})'
+              applications:
+                -
+                  name: Traceroute
+              preprocessing:
+                -
+                  type: JSONPATH
+                  parameters:
+                    - '$.[?(@.hop == {#HOP_NUM})].avg.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: ''
+              master_item:
+                key: 'mikrotik.traceroute[{$TARGET_IP}]'
+              trigger_prototypes:
+                -
+                  uuid: 6f421f1d18224b11910c06a466c43711
+                  expression: '{avg(5m)}>{${HOP_LATENCY_THRESHOLD}}'
+                  name: 'High latency on hop {#HOP_NUM} ({#HOP_IP}): {ITEM.LASTVALUE}'
+                  priority: WARNING
+                  description: 'Average latency for this hop exceeds the threshold'
+            -
+              uuid: 2f730030282142279b9a2c89694e9f75
+              name: 'Hop {#HOP_NUM}: {#HOP_IP} Loss'
+              type: DEPENDENT
+              key: 'traceroute.hop[{#HOP_NUM},loss]'
+              delay: 0
+              history: 7d
+              value_type: FLOAT
+              units: '%'
+              description: 'Packet loss percentage for hop {#HOP_NUM} ({#HOP_IP})'
+              applications:
+                -
+                  name: Traceroute
+              preprocessing:
+                -
+                  type: JSONPATH
+                  parameters:
+                    - '$.[?(@.hop == {#HOP_NUM})].loss.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: ''
+              master_item:
+                key: 'mikrotik.traceroute[{$TARGET_IP}]'
+              trigger_prototypes:
+                -
+                  uuid: 3a2c0f20293144f8999741b6592233f2
+                  expression: '{last()}>{${HOP_LOSS_THRESHOLD}}'
+                  name: 'Packet loss on hop {#HOP_NUM} ({#HOP_IP}): {ITEM.LASTVALUE}%'
+                  priority: HIGH
+                  description: 'Packet loss percentage for this hop exceeds the threshold'
+            -
+              uuid: 74d640e118924b26a640103b41e8c142
+              name: 'Hop {#HOP_NUM}: {#HOP_IP} Jitter'
+              type: DEPENDENT
+              key: 'traceroute.hop[{#HOP_NUM},jitter]'
+              delay: 0
+              history: 7d
+              value_type: FLOAT
+              units: ms
+              description: 'Jitter (standard deviation) for hop {#HOP_NUM} ({#HOP_IP})'
+              applications:
+                -
+                  name: Traceroute
+              preprocessing:
+                -
+                  type: JSONPATH
+                  parameters:
+                    - '$.[?(@.hop == {#HOP_NUM})].stddev.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: ''
+              master_item:
+                key: 'mikrotik.traceroute[{$TARGET_IP}]'
+              trigger_prototypes:
+                -
+                  uuid: 86e740e219a34b37877207c466e9d653
+                  expression: '{avg(5m)}>{${HOP_JITTER_THRESHOLD}}'
+                  name: 'High jitter on hop {#HOP_NUM} ({#HOP_IP}): {ITEM.LASTVALUE}ms'
+                  priority: WARNING
+                  description: 'Jitter (standard deviation) for this hop exceeds the threshold'
+          lld_macro_paths:
+            -
+              lld_macro: '{#HOP_NUM}'
+              path: $.hop
+            -
+              lld_macro: '{#HOP_IP}'
+              path: $.address
+      macros:
+        -
+          macro: '{$MIKROTIK_IP}'
+          value: 192.168.1.1
+          description: 'IP address of MikroTik router'
+        -
+          macro: '{$MIKROTIK_USER}'
+          value: admin
+          description: 'Username for MikroTik router'
+        -
+          macro: '{$MIKROTIK_PASS}'
+          value: password
+          type: SECRET
+          description: 'Password for MikroTik router'
+        -
+          macro: '{$TARGET_IP}'
+          value: 8.8.8.8
+          description: 'Target IP to trace route to'
+        -
+          macro: '{$PROBE_COUNT}'
+          value: 5
+          description: 'Number of probes per hop'
+        -
+          macro: '{$HOP_LATENCY_THRESHOLD}'
+          value: 100
+          description: 'Threshold for average hop latency (ms)'
+        -
+          macro: '{$HOP_JITTER_THRESHOLD}'
+          value: 20
+          description: 'Threshold for hop jitter/stddev (ms)'
+        -
+          macro: '{$HOP_LOSS_THRESHOLD}'
+          value: 10
+          description: 'Threshold for hop packet loss (%)'
+        -
+          macro: '{$TOTAL_LATENCY_THRESHOLD}'
+          value: 200
+          description: 'Threshold for total path latency (ms)'
+        -
+          macro: '{$LAST_HOP_LATENCY_THRESHOLD}'
+          value: 50
+          description: 'Threshold for last hop latency (ms)'
+        -
+          macro: '{$HOP_COUNT_CHANGE_THRESHOLD}'
+          value: 2
+          description: 'Threshold for hop count change to trigger an alert'
+      screens:
+        -
+          uuid: a1b2c3d4e5f678901234567890abcdef
+          name: 'Traceroute Overview'
+          hsize: 2
+          vsize: 2
+          screen_items:
+            -
+              resourcetype: GRAPH
+              width: 500
+              height: 100
+              x: 0
+              y: 0
+              colspan: 1
+              rowspan: 1
+              resource:
+                name: 'Hop Count to {$TARGET_IP}'
+                host: MikroTik Traceroute
+            -
+              resourcetype: GRAPH
+              width: 500
+              height: 100
+              x: 1
+              y: 0
+              colspan: 1
+              rowspan: 1
+              resource:
+                name: 'Total Latency to {$TARGET_IP}'
+                host: MikroTik Traceroute
+            -
+              resourcetype: GRAPH
+              width: 500
+              height: 100
+              x: 0
+              y: 1
+              colspan: 2
+              rowspan: 1
+              resource:
+                name: 'Hop Performance'
+                host: MikroTik Traceroute
+      graphs:
+        -
+          uuid: 11111111111111111111111111111111
+          name: 'Hop Count to {$TARGET_IP}'
+          width: 900
+          height: 200
+          yaxismin: 0.0000
+          yaxismax: 100.0000
+          show_work_period: true
+          show_triggers: true
+          type: GRAPH
+          show_legend: true
+          show_3d: false
+          graph_items:
+            -
+              sortorder: 0
+              drawtype: LINE
+              color: '1A7C11'
+              yaxisside: LEFT
+              calc_fnc: AVERAGE
+              type: ITEM
+              item:
+                host: MikroTik Traceroute
+                key: 'traceroute.hop_count[{$TARGET_IP}]'
+        -
+          uuid: 22222222222222222222222222222222
+          name: 'Total Latency to {$TARGET_IP}'
+          width: 900
+          height: 200
+          yaxismin: 0.0000
+          yaxismax: 100.0000
+          show_work_period: true
+          show_triggers: true
+          type: GRAPH
+          show_legend: true
+          show_3d: false
+          graph_items:
+            -
+              sortorder: 0
+              drawtype: LINE
+              color: '1A7C11'
+              yaxisside: LEFT
+              calc_fnc: AVERAGE
+              type: ITEM
+              item:
+                host: MikroTik Traceroute
+                key: 'traceroute.total_latency[{$TARGET_IP}]'
+            -
+              sortorder: 1
+              drawtype: LINE
+              color: 'F63100'
+              yaxisside: LEFT
+              calc_fnc: AVERAGE
+              type: ITEM
+              item:
+                host: MikroTik Traceroute
+                key: 'traceroute.last_hop_latency[{$TARGET_IP}]'
+        -
+          uuid: 33333333333333333333333333333333
+          name: 'Hop Performance'
+          width: 900
+          height: 300
+          yaxismin: 0.0000
+          yaxismax: 100.0000
+          show_work_period: true
+          show_triggers: true
+          type: STACKED
+          show_legend: true
+          show_3d: false
+          graph_items: []
+      triggers:
+        -
+          uuid: 44444444444444444444444444444444
+          expression: '{MikroTik Traceroute:traceroute.total_latency[{$TARGET_IP}].avg(15m)}>{${TOTAL_LATENCY_THRESHOLD}}*1.5'
+          name: 'Very high total latency to {$TARGET_IP}: {ITEM.LASTVALUE}'
+          priority: HIGH
+          description: 'Total latency to the destination is significantly higher than the threshold for a sustained period'
